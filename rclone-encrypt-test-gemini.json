@@ -1,12 +1,12 @@
 {
   "version": "1.0.0",
   "description": "A small CLI tool that encrypts and decrypts using the rclone encryption defaults.",
-  "homepage": "https://github.com/chris/rclone-encrypt-test-gemini",
+  "homepage": "https://github.com/yetanotherchris/rclone-encrypt-test-gemini",
   "license": "MIT",
   "architecture": {
     "64bit": {
-      "url": "https://github.com/chris/rclone-encrypt-test-gemini/releases/download/v1.0.0/rclone-encrypt-test-gemini-windows-amd64.zip",
-      "hash": "d3ca79d63c53bc50b3d5b0f5decf87fe1d93307cfde4d1bfde4b1bfde4b1bfde"
+      "url": "https://github.com/yetanotherchris/rclone-encrypt-test-gemini/releases/download/v1.0.0/rclone-encrypt-test-gemini-windows-amd64.zip",
+      "hash": "474d60d7e81e641ceee8f279a925687c95a83633376e68f85d1a136d2fb72bb8"
     }
   },
   "bin": "rclone-encrypt-test-gemini.exe"
