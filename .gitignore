@@ -1,0 +1,5 @@
+# Binaries
+*.exe
+rclone-encrypt-test-gemini
+dist/
+C:\Users\chris\AppData\Local\Temp\opencode\test_dec.go
