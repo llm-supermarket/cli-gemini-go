@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/aes"
 	"crypto/rand"
@@ -155,7 +156,9 @@ func EncryptFile(inputPath, outputPath string, dataKey []byte) error {
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	// Write magic header
 	if _, err := outFile.Write([]byte("RCLONE\x00\x00")); err != nil {
@@ -179,7 +182,7 @@ func EncryptFile(inputPath, outputPath string, dataKey []byte) error {
 	buf := make([]byte, maxPlainBlockSize)
 
 	for {
-		n, err := inFile.Read(buf)
+		n, err := io.ReadFull(inFile, buf)
 		if n > 0 {
 			encrypted := secretbox.Seal(nil, buf[:n], &currentNonce, &dataKey32)
 			if _, err := outFile.Write(encrypted); err != nil {
@@ -187,7 +190,7 @@ func EncryptFile(inputPath, outputPath string, dataKey []byte) error {
 			}
 			incrementNonce(&currentNonce)
 		}
-		if err == io.EOF {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			break
 		}
 		if err != nil {
@@ -223,7 +226,9 @@ func DecryptFile(inputPath, outputPath string, dataKey []byte) error {
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	var dataKey32 [32]byte
 	copy(dataKey32[:], dataKey)
@@ -233,7 +238,7 @@ func DecryptFile(inputPath, outputPath string, dataKey []byte) error {
 	buf := make([]byte, maxEncryptedBlockSize)
 
 	for {
-		n, err := inFile.Read(buf)
+		n, err := io.ReadFull(inFile, buf)
 		if n > 0 {
 			decrypted, ok := secretbox.Open(nil, buf[:n], &currentNonce, &dataKey32)
 			if !ok {
@@ -244,7 +249,7 @@ func DecryptFile(inputPath, outputPath string, dataKey []byte) error {
 			}
 			incrementNonce(&currentNonce)
 		}
-		if err == io.EOF {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			break
 		}
 		if err != nil {
@@ -267,12 +272,12 @@ func readPassword(prompt string) (string, error) {
 		return string(pBytes), nil
 	} else {
 		// Fallback for non-interactive / scripted test environments
-		var line string
-		_, err := fmt.Scanln(&line)
-		if err != nil && err != io.EOF && err.Error() != "unexpected newline" {
+		reader := bufio.NewReader(os.Stdin)
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
 			return "", err
 		}
-		return strings.TrimSpace(line), nil
+		return strings.TrimRight(line, "\r\n"), nil
 	}
 }
 
