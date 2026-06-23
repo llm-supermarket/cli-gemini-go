@@ -1,0 +1,157 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Get version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Cross-compile binaries
+        run: |
+          mkdir -p dist
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -o dist/rclone-encrypt-test-gemini.exe main.go
+          cd dist && zip rclone-encrypt-test-gemini-windows-amd64.zip rclone-encrypt-test-gemini.exe && rm rclone-encrypt-test-gemini.exe && cd ..
+          
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -o dist/rclone-encrypt-test-gemini main.go
+          tar -czf dist/rclone-encrypt-test-gemini-linux-amd64.tar.gz -C dist rclone-encrypt-test-gemini
+          
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -o dist/rclone-encrypt-test-gemini main.go
+          tar -czf dist/rclone-encrypt-test-gemini-linux-arm64.tar.gz -C dist rclone-encrypt-test-gemini
+          
+          # macOS amd64
+          GOOS=darwin GOARCH=amd64 go build -o dist/rclone-encrypt-test-gemini main.go
+          tar -czf dist/rclone-encrypt-test-gemini-darwin-amd64.tar.gz -C dist rclone-encrypt-test-gemini
+          
+          # macOS arm64
+          GOOS=darwin GOARCH=arm64 go build -o dist/rclone-encrypt-test-gemini main.go
+          tar -czf dist/rclone-encrypt-test-gemini-darwin-arm64.tar.gz -C dist rclone-encrypt-test-gemini
+          
+          rm -f dist/rclone-encrypt-test-gemini
+
+      - name: Calculate SHA256 hashes
+        id: hashes
+        run: |
+          SHA_WIN=$(sha256sum dist/rclone-encrypt-test-gemini-windows-amd64.zip | awk '{print $1}')
+          SHA_LINUX_AMD64=$(sha256sum dist/rclone-encrypt-test-gemini-linux-amd64.tar.gz | awk '{print $1}')
+          SHA_LINUX_ARM64=$(sha256sum dist/rclone-encrypt-test-gemini-linux-arm64.tar.gz | awk '{print $1}')
+          SHA_DARWIN_AMD64=$(sha256sum dist/rclone-encrypt-test-gemini-darwin-amd64.tar.gz | awk '{print $1}')
+          SHA_DARWIN_ARM64=$(sha256sum dist/rclone-encrypt-test-gemini-darwin-arm64.tar.gz | awk '{print $1}')
+          
+          echo "SHA_WIN=$SHA_WIN" >> $GITHUB_ENV
+          echo "SHA_LINUX_AMD64=$SHA_LINUX_AMD64" >> $GITHUB_ENV
+          echo "SHA_LINUX_ARM64=$SHA_LINUX_ARM64" >> $GITHUB_ENV
+          echo "SHA_DARWIN_AMD64=$SHA_DARWIN_AMD64" >> $GITHUB_ENV
+          echo "SHA_DARWIN_ARM64=$SHA_DARWIN_ARM64" >> $GITHUB_ENV
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/rclone-encrypt-test-gemini-windows-amd64.zip
+            dist/rclone-encrypt-test-gemini-linux-amd64.tar.gz
+            dist/rclone-encrypt-test-gemini-linux-arm64.tar.gz
+            dist/rclone-encrypt-test-gemini-darwin-amd64.tar.gz
+            dist/rclone-encrypt-test-gemini-darwin-arm64.tar.gz
+          body: |
+            rclone-encrypt-test-gemini v${{ env.VERSION }}
+            
+            SHA256 Hashes:
+            * Windows amd64: `${{ env.SHA_WIN }}`
+            * Linux amd64: `${{ env.SHA_LINUX_AMD64 }}`
+            * Linux arm64: `${{ env.SHA_LINUX_ARM64 }}`
+            * macOS amd64: `${{ env.SHA_DARWIN_AMD64 }}`
+            * macOS arm64: `${{ env.SHA_DARWIN_ARM64 }}`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate and commit Scoop and Homebrew package files
+        run: |
+          # 1. Scoop Manifest
+          cat <<EOF > rclone-encrypt-test-gemini.json
+          {
+            "version": "${{ env.VERSION }}",
+            "description": "A small CLI tool that encrypts and decrypts using the rclone encryption defaults.",
+            "homepage": "https://github.com/${{ github.repository }}",
+            "license": "MIT",
+            "architecture": {
+              "64bit": {
+                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/rclone-encrypt-test-gemini-windows-amd64.zip",
+                "hash": "${{ env.SHA_WIN }}"
+              }
+            },
+            "bin": "rclone-encrypt-test-gemini.exe"
+          }
+          EOF
+          
+          # 2. Homebrew Formula
+          mkdir -p Formula
+          cat <<EOF > Formula/rclone-encrypt-test-gemini.rb
+          class RcloneEncryptTestGemini < Formula
+            desc "A small CLI tool that encrypts and decrypts using the rclone encryption defaults"
+            homepage "https://github.com/${{ github.repository }}"
+            version "${{ env.VERSION }}"
+
+            on_macos do
+              if Hardware::CPU.intel?
+                url "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/rclone-encrypt-test-gemini-darwin-amd64.tar.gz"
+                sha256 "${{ env.SHA_DARWIN_AMD64 }}"
+              else
+                url "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/rclone-encrypt-test-gemini-darwin-arm64.tar.gz"
+                sha256 "${{ env.SHA_DARWIN_ARM64 }}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.intel?
+                url "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/rclone-encrypt-test-gemini-linux-amd64.tar.gz"
+                sha256 "${{ env.SHA_LINUX_AMD64 }}"
+              else
+                url "https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/rclone-encrypt-test-gemini-linux-arm64.tar.gz"
+                sha256 "${{ env.SHA_LINUX_ARM64 }}"
+              end
+            end
+
+            def install
+              bin.install "rclone-encrypt-test-gemini"
+            end
+
+            test do
+              system "#{bin}/rclone-encrypt-test-gemini", "-h"
+            end
+          end
+          EOF
+
+          # Configure Git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Switch to main branch to push back files (tag is checked out detached)
+          git checkout main || git checkout master || git checkout -b main
+          
+          # Commit and push updated Scoop and Homebrew files
+          git add rclone-encrypt-test-gemini.json Formula/rclone-encrypt-test-gemini.rb
+          git commit -m "chore: release version v${{ env.VERSION }} manifests"
+          git push origin HEAD:main || git push origin HEAD:master
