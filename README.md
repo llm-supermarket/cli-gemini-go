@@ -1,4 +1,4 @@
-# rclone-encrypt-test-gemini-go
+# cli-gemini-go
 A small CLI tool that encrypts and decrypts using the rclone encryption defaults. 
 
 ## Features
@@ -18,10 +18,10 @@ To install via Scoop on Windows, add the repository as a bucket and install:
 
 ```bash
 # Add the bucket (pointing directly to this GitHub repository)
-scoop bucket add rclone-encrypt-test-gemini https://github.com/chris/rclone-encrypt-test-gemini.git
+scoop bucket add cli-gemini https://github.com/chris/cli-gemini.git
 
 # Install the application
-scoop install rclone-encrypt-test-gemini/rclone-encrypt-test-gemini
+scoop install cli-gemini/cli-gemini
 ```
 
 ### Homebrew (macOS / Linux)
@@ -30,10 +30,10 @@ To install via Homebrew on macOS or Linux:
 
 ```bash
 # Tap the repository
-brew tap chris/rclone-encrypt-test-gemini https://github.com/chris/rclone-encrypt-test-gemini.git
+brew tap chris/cli-gemini https://github.com/chris/cli-gemini.git
 
 # Install the application
-brew install rclone-encrypt-test-gemini
+brew install cli-gemini
 ```
 
 ## Usage
@@ -46,10 +46,10 @@ When you don't supply a password via flag or environment variable, the tool secu
 
 ```bash
 # Encrypt a file (filename and output will be auto-derived using base32hex)
-rclone-encrypt-test-gemini -i secret.txt
+cli-gemini -i secret.txt
 
 # Decrypt an encrypted file back to its original name
-rclone-encrypt-test-gemini -d -i kr9tu4e1da4u3nifdd99g9tf5o
+cli-gemini -d -i kr9tu4e1da4u3nifdd99g9tf5o
 ```
 
 ### 2. Environment Variables (Automated & Secure)
@@ -61,7 +61,7 @@ export RCLONE_ENCRYPT_PASSWORD="MySuperSecurePassword"
 export RCLONE_ENCRYPT_SALT="MyCustomSalt" # Optional
 
 # Encrypt with base64 filename encoding
-rclone-encrypt-test-gemini -i data.csv --encoding base64
+cli-gemini -i data.csv --encoding base64
 ```
 
 ### 3. Using --password Flag (Insecure)
@@ -70,19 +70,19 @@ You can pass the password directly, but the CLI will print a warning about secur
 
 ```bash
 # Encrypt with explicit output file
-rclone-encrypt-test-gemini -i doc.pdf -o encrypted_doc.bin --password "Testpassword1"
+cli-gemini -i doc.pdf -o encrypted_doc.bin --password "Testpassword1"
 
 # Decrypt using a custom salt
-rclone-encrypt-test-gemini -d -i encrypted_doc.bin -o original_doc.pdf --password "Testpassword1" --salt "MyCustomSalt"
+cli-gemini -d -i encrypted_doc.bin -o original_doc.pdf --password "Testpassword1" --salt "MyCustomSalt"
 ```
 
 ### Options
 
 ```text
-rclone-encrypt-test-gemini - A CLI tool to encrypt and decrypt using rclone defaults
+cli-gemini - A CLI tool to encrypt and decrypt using rclone defaults
 
 Usage:
-  rclone-encrypt-test-gemini [options]
+  cli-gemini [options]
 
 Options:
   -i, --input-file <path>     Input file path (required)
@@ -106,5 +106,5 @@ go test -v
 To build a local release binary:
 
 ```bash
-go build -o rclone-encrypt-test-gemini main.go
+go build -o cli-gemini main.go
 ```
